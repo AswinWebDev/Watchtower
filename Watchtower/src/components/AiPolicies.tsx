@@ -13,7 +13,7 @@ export const AiPolicies = () => {
 
     setIsProcessing(true);
     try {
-      const response = await fetch('http://localhost:3001/api/v1/ai/generate-policy', {
+      const response = await fetch('http://localhost:3001/api/parse-rule', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ prompt: input })
@@ -22,22 +22,26 @@ export const AiPolicies = () => {
       const data = await response.json();
       
       if (data.success && data.policy) {
+        // Map the backend JSON structure to our frontend store structure
         addRule({
-          description: input,
-          category: data.policy.category,
-          limit: data.policy.limit,
-          period: data.policy.period,
+          description: data.policy.explanation || input,
+          category: data.policy.target || 'General',
+          limit: data.policy.amountDetails?.limit || 0,
+          period: data.policy.amountDetails?.timeframe?.toLowerCase() || 'daily',
           active: true
         });
+      } else {
+        throw new Error(data.error || 'Failed to parse policy');
       }
     } catch (err) {
-      console.warn("Backend unavailable. Falling back to simple heuristic for demo.", err);
+      console.warn("Backend unavailable or failed. Using fallback.", err);
+      // Fallback for demo purposes if backend isn't running
       const limitMatch = input.match(/\d+/);
-      const limit = limitMatch ? parseInt(limitMatch[0], 10) : 20;
+      const limit = limitMatch ? parseInt(limitMatch[0], 10) : 0;
       
       addRule({
         description: input,
-        category: 'GameFi',
+        category: 'GameFi (Fallback)',
         limit: limit,
         period: 'daily',
         active: true
