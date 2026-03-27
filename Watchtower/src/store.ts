@@ -1,6 +1,12 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 
+export interface ChatMessage {
+  role: 'ai' | 'user' | 'policy';
+  text: string;
+  policy?: any;
+}
+
 export interface GuardRule {
   id: string;
   description: string;
@@ -43,6 +49,8 @@ interface WatchtowerStore {
   resolvedThreats: string[];
   cachedAnalysis: ThreatAnalysis | null;
   transactions: Transaction[];
+  chatMessages: ChatMessage[];
+  addChatMessage: (msg: ChatMessage) => void;
   connectWallet: () => Promise<void>;
   addRule: (rule: Omit<GuardRule, 'id'>) => void;
   dismissThreat: (threatKey: string) => void;
@@ -51,6 +59,7 @@ interface WatchtowerStore {
   refreshBalance: () => Promise<void>;
   setWallet: (address: string) => void;
   forceMockConnection: () => void;
+  disconnectWallet: () => void;
 }
 
 export const useStore = create<WatchtowerStore>()(
@@ -64,10 +73,33 @@ export const useStore = create<WatchtowerStore>()(
       usedDaily: 0,
       forceMockConnection: () => {},
       setWallet: (address: string) => set({ walletConnected: true, walletAddress: address, showInstallModal: false }),
+      disconnectWallet: () => {
+        set({
+          walletConnected: false,
+          walletAddress: '',
+          totalBalance: 0,
+          showInstallModal: false,
+          rules: [],
+          resolvedThreats: [],
+          transactions: [],
+          usedDaily: 0,
+          cachedAnalysis: null,
+          chatMessages: [
+            { role: 'ai', text: "Hello! I am your Watchtower Guardian AI. I translate natural language instructions into strict Move smart contract policies that protect your OneWallet on OneChain.\n\nTry commands like: \"Limit my daily OnePlay bets to 20 OCT\" or \"Block all OneDEX swaps over 100 OCT\"." }
+          ]
+        })
+      },
       rules: [],
       resolvedThreats: [],
       cachedAnalysis: null,
       transactions: [],
+      chatMessages: [
+        { role: 'ai', text: "Hello! I am your Watchtower Guardian AI. I translate natural language instructions into strict Move smart contract policies that protect your OneWallet on OneChain.\n\nTry commands like: \"Limit my daily OnePlay bets to 20 OCT\" or \"Block all OneDEX swaps over 100 OCT\"." }
+      ],
+
+      addChatMessage: (msg: ChatMessage) => set((state) => ({
+        chatMessages: [...state.chatMessages, msg]
+      })),
 
       dismissThreat: (threatKey: string) => set((state) => ({
         resolvedThreats: [...new Set([...state.resolvedThreats, threatKey])]
@@ -80,8 +112,7 @@ export const useStore = create<WatchtowerStore>()(
         const address = get().walletAddress;
         if (!address) return;
         try {
-          const { getFullnodeUrl } = await import('@onelabs/sui/client');
-          const res = await fetch(getFullnodeUrl('testnet'), {
+          const res = await fetch('https://rpc-testnet.onelabs.cc', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -157,8 +188,7 @@ export const useStore = create<WatchtowerStore>()(
           // Fetch real OCT balance from OneChain testnet
           let balance = 0;
           try {
-            const { getFullnodeUrl } = await import('@onelabs/sui/client');
-            const res = await fetch(getFullnodeUrl('testnet'), {
+            const res = await fetch('https://rpc-testnet.onelabs.cc', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({
@@ -188,10 +218,8 @@ export const useStore = create<WatchtowerStore>()(
 
       attemptTransaction: (amount: number, game: string) => {
         const state = get();
-        // Check ALL matching rules (GameFi, DeFi, All)
-        const matchingRule = state.rules.find((r) => 
-          (r.category === 'GameFi' || r.category === 'All') && r.period === 'daily' && r.active
-        );
+        // Check ALL matching rules for the generic demo simulator
+        const matchingRule = state.rules.find((r) => r.period === 'daily' && r.active);
 
         let isBlocked = false;
         let reason = '';
@@ -232,6 +260,7 @@ export const useStore = create<WatchtowerStore>()(
         rules: state.rules,
         transactions: state.transactions,
         resolvedThreats: state.resolvedThreats,
+        chatMessages: state.chatMessages,
       }),
     }
   )

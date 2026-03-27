@@ -1,135 +1,143 @@
 import { useStore } from '../store';
-import { ShieldCheck, ShieldAlert, Activity, ArrowDownRight, Zap, TrendingUp, Gamepad2 } from 'lucide-react';
+import { ShieldCheck, ShieldAlert, Activity, ArrowDownRight, Zap, TrendingUp, Gamepad2, Shield } from 'lucide-react';
 import { AgentAlerts } from './AgentAlerts';
 
 export const Dashboard = () => {
   const { totalBalance, usedDaily, rules, transactions } = useStore();
   
-  const dailyRule = rules.find((r: any) => (r.category === 'GameFi' || r.category === 'All') && r.period === 'daily' && r.active);
+  const dailyRule = rules.find((r: any) => r.period === 'daily' && r.active);
   const dailyLimit = dailyRule ? dailyRule.limit : 0;
   const progress = dailyLimit > 0 ? Math.min((usedDaily / dailyLimit) * 100, 100) : 0;
 
   return (
-    <div className="space-y-6">
-      {/* Proactive Agent Analysis */}
+    <div className="space-y-4 max-w-[1200px] mx-auto">
+      {/* Top Banner (Agent Core Scanning) */}
+      <div className="metric-card p-4 flex items-center space-x-4 border-[#1f1f1f] bg-[#111]">
+        <Activity className="w-5 h-5 text-primary" />
+        <div>
+          <h3 className="text-[13px] font-bold text-white flex items-center">
+            <Shield className="w-[14px] h-[14px] mr-2 text-white/50" />
+            Agent Core Active
+          </h3>
+          <p className="text-[11px] text-textMuted mt-0.5">Watching OneDEX, OnePlay, OnePoker activity for threats.</p>
+        </div>
+      </div>
+
       <AgentAlerts />
 
       {/* Main Stats Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div className="glass-panel p-6 flex flex-col justify-between relative overflow-hidden">
-          <div className="absolute top-0 right-0 w-32 h-32 bg-primary/10 rounded-full blur-3xl -mr-10 -mt-10"></div>
-          <h3 className="text-textMuted text-sm font-medium">Total Shielded Balance</h3>
-          <p className="text-4xl font-bold mt-2 z-10">{totalBalance.toFixed(2)} <span className="text-xl text-primary font-normal">OCT</span></p>
-          <div className="mt-4 flex items-center text-sm text-green-400 font-medium z-10">
-            <ShieldCheck className="w-4 h-4 mr-1" />
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {/* Total Shielded Balance */}
+        <div className="metric-card p-6 border-[#1f1f1f] bg-[#111] flex flex-col justify-between h-[160px]">
+          <h3 className="text-[11px] font-bold text-textMuted uppercase tracking-widest mb-2">Total Shielded Balance</h3>
+          <div className="flex items-baseline space-x-2">
+            <span className="text-4xl font-[800] text-white tracking-tight">{totalBalance.toFixed(2)}</span>
+            <span className="text-xl font-bold text-primary">OCT</span>
+          </div>
+          <div className="flex items-center text-[12px] text-white/60 font-semibold mt-auto pt-4">
+            <ShieldCheck className="w-[14px] h-[14px] mr-1.5 text-primary" />
             Protected by Guardian Vault
           </div>
         </div>
 
-        <div className="glass-panel p-6 col-span-2 relative overflow-hidden">
-           <div className="absolute bottom-0 right-0 w-40 h-40 bg-accent/10 rounded-full blur-3xl -mr-10 -mb-10"></div>
-          <h3 className="text-textMuted text-sm font-medium mb-4">Daily Spending Limit Usage</h3>
-          <div className="flex justify-between items-end mb-2 z-10 relative">
-            <div>
-              <p className="text-3xl font-bold">{usedDaily.toFixed(2)} <span className="text-lg text-textMuted font-normal">/ {dailyLimit} OCT</span></p>
+         {/* Daily Spending Limit Usage */}
+        <div className="metric-card p-6 border-[#1f1f1f] bg-[#111] flex flex-col justify-between h-[160px]">
+           <h3 className="text-[11px] font-bold text-textMuted uppercase tracking-widest mb-2">Daily Spending Limit Usage</h3>
+           <div className="flex justify-between items-end mb-4">
+            <div className="flex items-baseline space-x-1">
+              <span className="text-3xl font-[800] text-white tracking-tight">{usedDaily.toFixed(2)}</span>
+              <span className="text-sm font-bold text-textMuted">{dailyLimit > 0 ? `/ ${dailyLimit} OCT` : 'OCT Spent Today'}</span>
             </div>
-            <div className="text-right">
-              {dailyLimit === 0 ? (
-                <span className="text-yellow-400 flex items-center font-medium"><ShieldAlert className="w-4 h-4 mr-1"/> No Limit Set</span>
-              ) : progress >= 100 ? (
-                <span className="text-red-400 flex items-center font-medium"><ShieldAlert className="w-4 h-4 mr-1"/> Limits Reached</span>
-              ) : (
-                <span className="text-accent font-medium">{(100 - progress).toFixed(0)}% Remaining</span>
-              )}
-            </div>
-          </div>
-          <div className="w-full bg-white/5 rounded-full h-3 mb-2 overflow-hidden border border-white/5 z-10 relative">
-            <div 
-              className={`h-3 rounded-full transition-all duration-1000 ${progress > 80 ? 'bg-gradient-to-r from-red-500 to-red-600' : 'bg-gradient-to-r from-primary to-accent'}`} 
-              style={{ width: `${progress}%` }}
-            ></div>
-          </div>
+            
+            {dailyLimit === 0 ? (
+              <span className="text-[12px] text-textMuted font-bold flex items-center tracking-wide">
+                <ShieldAlert className="w-[14px] h-[14px] mr-1.5 text-primary/50"/> No Policy Set
+              </span>
+            ) : progress >= 100 ? (
+              <span className="text-[12px] text-primary font-bold flex items-center tracking-wide">
+                <ShieldAlert className="w-[14px] h-[14px] mr-1.5"/> Limits Reached
+              </span>
+            ) : (
+                <span className="text-[12px] text-white/80 font-bold tracking-wide">{(100 - progress).toFixed(0)}% Remaining</span>
+            )}
+           </div>
+
+           {/* Progress bar matching image */}
+           <div className="w-full h-1.5 bg-[#222] rounded-full overflow-hidden mt-auto">
+             <div 
+               className={`h-full transition-all duration-1000 ${progress > 80 ? 'bg-primary' : 'bg-[#555]'}`} 
+               style={{ width: `${progress}%` }}
+             ></div>
+           </div>
         </div>
       </div>
 
       {/* OneChain Product Monitoring */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div className="glass-panel p-4 flex items-center space-x-3 border border-white/5 hover:border-primary/30 transition-colors">
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500/20 to-cyan-500/20 flex items-center justify-center border border-blue-500/30">
-            <TrendingUp className="w-5 h-5 text-blue-400" />
+        {[
+          { name: "OneDEX", icon: TrendingUp, status: "Monitoring swaps" },
+          { name: "OnePlay", icon: Gamepad2, status: "Monitoring bets" },
+          { name: "OnePoker", icon: Zap, status: "Monitoring stakes" }
+        ].map((prod, i) => (
+          <div key={i} className="metric-card p-4 flex items-center space-x-4 border-[#1f1f1f] bg-[#111] h-[80px]">
+            <div className="w-[38px] h-[38px] rounded-lg bg-[#1a1a1a] border border-[#2a2a2c] flex items-center justify-center shrink-0">
+              <prod.icon className="w-[18px] h-[18px] text-white/70" strokeWidth={1.5} />
+            </div>
+            <div>
+              <p className="text-[13px] font-bold text-white tracking-wide">{prod.name}</p>
+              <p className="text-[11px] text-primary font-semibold mt-0.5">{prod.status}</p>
+            </div>
           </div>
-          <div>
-            <p className="text-sm font-semibold text-white/90">OneDEX</p>
-            <p className="text-xs text-green-400">Monitoring swaps</p>
-          </div>
-        </div>
-        <div className="glass-panel p-4 flex items-center space-x-3 border border-white/5 hover:border-primary/30 transition-colors">
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-purple-500/20 to-pink-500/20 flex items-center justify-center border border-purple-500/30">
-            <Gamepad2 className="w-5 h-5 text-purple-400" />
-          </div>
-          <div>
-            <p className="text-sm font-semibold text-white/90">OnePlay</p>
-            <p className="text-xs text-green-400">Monitoring bets</p>
-          </div>
-        </div>
-        <div className="glass-panel p-4 flex items-center space-x-3 border border-white/5 hover:border-primary/30 transition-colors">
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-yellow-500/20 to-orange-500/20 flex items-center justify-center border border-yellow-500/30">
-            <Zap className="w-5 h-5 text-yellow-400" />
-          </div>
-          <div>
-            <p className="text-sm font-semibold text-white/90">OnePoker</p>
-            <p className="text-xs text-green-400">Monitoring stakes</p>
-          </div>
-        </div>
+        ))}
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <div className="glass-panel p-6">
-          <h3 className="text-lg font-semibold mb-4 border-b border-white/10 pb-2">Active AI Policies</h3>
+      {/* Policies & Activity Bottom Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pb-12">
+        <div className="metric-card p-6 border-[#1f1f1f] bg-[#111]">
+          <h3 className="text-[11px] font-bold tracking-widest uppercase mb-5 text-white/80">Active AI Policies</h3>
           <div className="space-y-3">
             {rules.length === 0 && (
-              <p className="text-sm text-textMuted italic">No policies deployed yet. Use the AI Policies tab to create spending rules.</p>
+              <p className="text-[12px] text-textMuted font-medium">No active policies found.</p>
             )}
             {rules.map((rule: any) => (
-              <div key={rule.id} className="p-4 bg-white/5 rounded-xl border border-white/5 flex items-start justify-between hover:bg-white/10 transition-colors cursor-default">
+              <div key={rule.id} className="p-4 bg-[#161618] rounded-lg border border-[#262626] flex items-start justify-between">
                 <div>
-                  <p className="font-medium text-sm text-white/90 leading-snug">{rule.description}</p>
-                  <div className="flex gap-2 mt-2">
-                    <span className="text-xs px-2 py-0.5 rounded-md bg-white/5 border border-white/10 uppercase tracking-wider font-semibold text-textMuted">{rule.category}</span>
+                  <p className="font-semibold text-[13px] text-white/90 leading-relaxed pr-6">{rule.description}</p>
+                  <div className="flex gap-2 mt-4">
+                    <span className="text-[9px] px-2 py-0.5 rounded border border-[#333] uppercase tracking-widest font-bold text-textMuted">{rule.category}</span>
                     {rule.limit > 0 && (
-                      <span className="text-xs px-2 py-0.5 rounded-md bg-primary/10 border border-primary/20 font-bold text-primary">{rule.limit} OCT/{rule.period}</span>
+                      <span className="text-[9px] px-2 py-0.5 rounded bg-primary/10 border border-primary/20 font-bold tracking-widest text-[#5588ff]">{rule.limit} OCT/daily</span>
                     )}
                   </div>
                 </div>
-                <div className={`w-3 h-3 rounded-full shrink-0 ml-4 mt-1 ${rule.active ? 'bg-green-500 shadow-[0_0_10px_rgba(34,197,94,0.5)]' : 'bg-gray-500'}`}></div>
+                <div className={`w-2.5 h-2.5 rounded-full shrink-0 border ${rule.active ? 'bg-[#5588ff] border-[#5588ff]' : 'bg-transparent border-[#333]'}`}></div>
               </div>
             ))}
           </div>
         </div>
 
-        <div className="glass-panel p-6">
-          <h3 className="text-lg font-semibold mb-4 border-b border-white/10 pb-2 flex items-center justify-between">
-            Recent Activity
-            <Activity className="w-4 h-4 text-primary" />
+        <div className="metric-card p-6 border-[#1f1f1f] bg-[#111]">
+          <h3 className="text-[11px] font-bold tracking-widest uppercase mb-5 text-white/80 flex justify-between items-center">
+            <span>Recent Activity</span>
+            <Activity className="w-[14px] h-[14px] text-[#5588ff]" />
           </h3>
-          <div className="space-y-3 max-h-[300px] overflow-y-auto pr-2 custom-scrollbar">
+          <div className="space-y-2 max-h-[300px] overflow-y-auto pr-1 custom-scrollbar">
             {transactions.length === 0 && (
-              <p className="text-sm text-textMuted italic">No transactions yet. Use the OnePlay Simulator to test your policies.</p>
+              <p className="text-[12px] text-textMuted font-medium">No recent transactions.</p>
             )}
             {transactions.map((tx: any) => (
-              <div key={tx.id} className="flex flex-col p-3 border-l-2 border-white/10 bg-white/5 rounded-r-lg hover:bg-white/10 transition-colors">
-                <div className="flex justify-between items-center mb-1">
-                  <span className="font-medium text-sm text-white/90">{tx.game}</span>
-                  <span className={`font-bold flex items-center ${tx.status === 'allowed' ? 'text-white' : 'text-red-400'}`}>
-                    {tx.status === 'allowed' ? <ArrowDownRight className="w-3 h-3 mr-1 text-primary"/> : <ShieldAlert className="w-3 h-3 mr-1"/>}
+              <div key={tx.id} className="flex justify-between items-center p-3 border-l-2 border-[#262626] bg-[#161618] rounded-r-lg">
+                <div>
+                  <p className="font-bold text-[13px] text-white/90">{tx.game}</p>
+                  <p className="text-[#666] font-mono text-[9px] mt-1">{new Date(tx.timestamp).toLocaleTimeString()}</p>
+                </div>
+                <div className="text-right">
+                  <p className={`font-bold tracking-wide text-[12px] flex items-center justify-end ${tx.status === 'allowed' ? 'text-white/80' : 'text-primary'}`}>
+                    {tx.status === 'allowed' ? <ArrowDownRight className="w-3 h-3 mr-1 text-[#666]"/> : <ShieldAlert className="w-3 h-3 mr-1"/>}
                     {tx.amount} OCT
-                  </span>
+                  </p>
+                  <p className={`uppercase font-bold tracking-widest text-[9px] mt-1 ${tx.status === 'allowed' ? 'text-[#666]' : 'text-primary'}`}>{tx.status}</p>
                 </div>
-                <div className="flex justify-between items-center text-xs">
-                  <span className="text-textMuted">{new Date(tx.timestamp).toLocaleTimeString()}</span>
-                  <span className={`uppercase font-bold tracking-wider ${tx.status === 'allowed' ? 'text-green-400' : 'text-red-500'}`}>{tx.status}</span>
-                </div>
-                {tx.reason && <p className="text-xs text-red-300/80 mt-2 bg-red-950/30 p-2 rounded border border-red-500/20 italic">{tx.reason}</p>}
               </div>
             ))}
           </div>

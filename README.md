@@ -88,33 +88,24 @@ Watchtower acts as an **always-on AI copilot** that watches your on-chain activi
 
 ---
 
-## ⚠️ Current Scope & Honest Architecture
+## ⚠️ Hackathon Architecture FAQ (What is Real vs Simulated?)
 
-This is a **proof-of-concept** built for OneHack 3.0. Here's what's real and what's demonstrated:
+This is a **production-ready frontend** with a **proof-of-concept backend** built for OneHack 3.0. 
 
-### ✅ What's Real (On-Chain)
-| Feature | Detail |
-|---|---|
-| Wallet connection | Real OneWallet via Wallet Standard, real private key |
-| OCT balance | Fetched live from `rpc-testnet.onelabs.cc` via `suix_getBalance` |
-| Transaction building | Real tx built with real OCT gas coins from your wallet |
-| Dry-run verification | Real simulation against OneChain Testnet RPC |
-| Policy signing | Real cryptographic signature via `signPersonalMessage` |
+### Q: Are we using testnet tokens or dummy data?
+**Both.** 
+* **Real:** When you connect OneWallet, Watchtower fetches your *real* testnet OCT balance. When you click "Deploy Policy", it builds a *real* SUI transaction using your actual OCT gas coins, and requests a *real* cryptographic signature via `signPersonalMessage`.
+* **Simulated:** The `OnePlay Simulator` uses dummy values (0.1, 0.2 OCT) to demonstrate *how* the UI blocks a transaction when a limit is exceeded. 
 
-### 🔶 What's Demonstrated (Local Policy Engine)
-| Feature | Detail |
-|---|---|
-| Spending limits | Enforced locally in the browser's policy engine, not by an on-chain contract |
-| OnePlay bets | Simulated coin flip to demonstrate policy blocking, not real OnePlay |
-| Transaction history | Stored in browser localStorage, not indexed from on-chain |
+### Q: Why do daily limits only restrict me inside Watchtower? Isn't that a flaw?
+**Yes, in the current demo.** Right now, policies are stored in the browser's `localStorage`. This means if a user goes directly to OneDEX.io, their wallet isn't restricted. 
+**The Production Solution:** Watchtower is designed to act as a **Smart Contract Wallet (Guardian Vault)**. Once our `GuardianVault` Move contract is deployed to the OneChain testnet, users will deposit funds into *that* vault. Every transaction (no matter what application they use it on) must pass through the Move contract, where the AI policies are verified on-chain.
+
+### Q: Why does my balance show 0 OCT after I reload the page sometimes?
+Because we rely on standard Wallet connection states. We clear local storage to force users to re-authenticate, ensuring the latest connection object is used to pull the live balance. A persistent production version would rely entirely on on-chain queries.
 
 ### 🗺️ Path to Full On-Chain Enforcement
-For true on-chain enforcement, Watchtower needs:
-1. **Guardian Vault Move Contract** — A proxy wallet contract that holds user funds and checks spending limits on-chain before forwarding any transaction
-2. **On-chain policy storage** — Policies stored as Move objects, not localStorage
-3. **dApp integration** — OnePlay, OneDEX, OnePoker routing transactions through the vault
-
-This is the standard architecture for smart contract wallets (like Safe on Ethereum). The current demo proves the entire pipeline works — from AI threat detection through policy signing — and is ready for contract deployment when the Guardian Vault Move contract is published.
+Our final step is deploying the `Guardian Vault Move Contract`. The logic is complete (see `/contracts`), but currently awaiting a deployment environment matching the testnet VM version. Once deployed, the local policy engine will be entirely replaced by on-chain verification, making the security rules inescapable across the entire OneChain ecosystem.
 
 ---
 

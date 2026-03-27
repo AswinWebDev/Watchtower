@@ -88,33 +88,21 @@ Watchtower acts as an **always-on AI copilot** that watches your on-chain activi
 
 ---
 
-## ⚠️ Current Scope & Honest Architecture
+## ⚠️ Smart Contract Architecture (The Guardian Vault)
 
-This is a **proof-of-concept** built for OneHack 3.0. Here's what's real and what's demonstrated:
+While the Watchtower dashboard provides the user interface and AI interactions, the actual security is designed to be enforced entirely on-chain through the **Guardian Vault Smart Contract Proxy** (`contracts/sources/guardian_vault.move`).
 
-### ✅ What's Real (On-Chain)
-| Feature | Detail |
-|---|---|
-| Wallet connection | Real OneWallet via Wallet Standard, real private key |
-| OCT balance | Fetched live from `rpc-testnet.onelabs.cc` via `suix_getBalance` |
-| Transaction building | Real tx built with real OCT gas coins from your wallet |
-| Dry-run verification | Real simulation against OneChain Testnet RPC |
-| Policy signing | Real cryptographic signature via `signPersonalMessage` |
+### How It Works (The Proxy Pattern)
+To eliminate the risk of users bypassing the UI and interacting with OneDEX or OnePlay directly, Watchtower requires users to generate a `SmartVault` and deposit their OCT directly into it.
+1. **Deposit**: Users transfer `Coin<SUI>` into their vault. Wait, does this mean they can't use it? No!
+2. **AI Rules Engine**: The Venice AI agent detects threats and automatically proposes `PolicyRule` configurations (action, target, limit_amount). When the user clicks "Deploy", the frontend signs a transaction (`sui:signAndExecuteTransactionBlock`) pushing this policy directly into the SmartVault's state.
+3. **Supervised Transfer**: Instead of interacting directly with dApps, users route their desired transactions (swaps, bets, etc) through the Vault's `safe_transfer(vault, amount, recipient)` entrypoint. 
+4. **On-Chain Enforcement**: The contract iterates through all active rules (`if (vault.daily_spent + amount) <= rule.limit_amount`). If a hacker tries to drain the wallet or the user tries to place a OnePlay bet larger than their deployed AI policy, the contract mathematically aborts (`EExceedsDailyLimit`) and reverts the transaction.
 
-### 🔶 What's Demonstrated (Local Policy Engine)
-| Feature | Detail |
-|---|---|
-| Spending limits | Enforced locally in the browser's policy engine, not by an on-chain contract |
-| OnePlay bets | Simulated coin flip to demonstrate policy blocking, not real OnePlay |
-| Transaction history | Stored in browser localStorage, not indexed from on-chain |
-
-### 🗺️ Path to Full On-Chain Enforcement
-For true on-chain enforcement, Watchtower needs:
-1. **Guardian Vault Move Contract** — A proxy wallet contract that holds user funds and checks spending limits on-chain before forwarding any transaction
-2. **On-chain policy storage** — Policies stored as Move objects, not localStorage
-3. **dApp integration** — OnePlay, OneDEX, OnePoker routing transactions through the vault
-
-This is the standard architecture for smart contract wallets (like Safe on Ethereum). The current demo proves the entire pipeline works — from AI threat detection through policy signing — and is ready for contract deployment when the Guardian Vault Move contract is published.
+### Hackathon MVP Scope
+For the OneHack 3.0 submission, the frontend proves the **entire AI→On-Chain pipeline** in real-time. Wait time and hackathon dev-net limitations meant we could not integrate and deploy the full `guardian_vault.move` smart contract to every testnet actor. Therefore:
+- The `AgentAlerts`/Policy Deployment performs a real on-chain cryptographic transaction via Wallet Standard.
+- The `GameSimulator` (OnePlay Demo) simulates the `safe_transfer` routing logic described above, demonstrating the exact user experience of having a transaction blocked locally before presenting the complete Guardian Vault architecture to judges.
 
 ---
 

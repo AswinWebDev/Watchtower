@@ -79,7 +79,7 @@ app.post('/api/analyze-behavior', async (req, res) => {
     // Deterministic threat selection based on address hash
     // Same address always gets the same threat — prevents "new threat every reload"
     const hash = address.split('').reduce((acc, c) => acc + c.charCodeAt(0), 0);
-    const threatIndex = hash % 5;
+    const threatIndex = hash % 4;
 
     const threats = [
       {
@@ -117,13 +117,6 @@ app.post('/api/analyze-behavior', async (req, res) => {
           amountDetails: { limit: 0.5, timeframe: "daily" },
           explanation: "Baseline 0.5 OCT daily limit across all dApp categories"
         }
-      },
-      {
-        threatDetected: false,
-        severity: "LOW",
-        threatDescription: "",
-        recommendedAction: "No immediate action required",
-        suggestedPolicy: null
       },
       {
         threatDetected: true,

@@ -7,16 +7,18 @@ export default {
   theme: {
     extend: {
       colors: {
-        background: "#05050A",
-        card: "rgba(255, 255, 255, 0.03)",
-        cardBorder: "rgba(255, 255, 255, 0.08)",
-        primary: "#3b82f6", 
-        accent: "#8b5cf6", 
-        textMain: "#F8FAFC",
-        textMuted: "#94A3B8"
+        background: "#000000",
+        sidebar: "#1c1c1e",
+        card: "#121212",
+        cardBorder: "#262626",
+        cardHover: "#1a1a1a",
+        primary: "#dd3300", 
+        primaryLight: "#ff4411",
+        textMain: "#FFFFFF",
+        textMuted: "#888888"
       },
-      backgroundImage: {
-        'glass-gradient': 'linear-gradient(145deg, rgba(255, 255, 255, 0.05) 0%, rgba(255, 255, 255, 0.01) 100%)',
+      fontFamily: {
+        sans: ['Inter', 'system-ui', 'sans-serif'],
       }
     },
   },

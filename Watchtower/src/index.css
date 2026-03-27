@@ -5,23 +5,22 @@
 @layer base {
   body {
     @apply bg-background text-textMain min-h-screen font-sans;
-    background-image: 
-      radial-gradient(circle at 15% 50%, rgba(59, 130, 246, 0.15), transparent 25%),
-      radial-gradient(circle at 85% 30%, rgba(139, 92, 246, 0.15), transparent 25%);
-    background-attachment: fixed;
   }
 }
 
 @layer components {
-  .glass-panel {
-    @apply bg-card border border-cardBorder backdrop-blur-xl rounded-2xl shadow-2xl;
+  .metric-card {
+    @apply bg-card border border-cardBorder rounded-xl relative overflow-hidden;
   }
   
   .glass-button {
-    @apply bg-glass-gradient border border-cardBorder rounded-lg px-4 py-2 hover:bg-white/10 transition-all font-medium backdrop-blur-md shadow-lg;
+    @apply bg-card border border-cardBorder rounded-md px-4 py-2 transition-colors font-semibold flex items-center justify-center text-[13px] tracking-wide;
+  }
+  .glass-button:hover {
+    @apply bg-cardHover;
   }
   
   .glass-input {
-    @apply w-full bg-white/5 border border-white/10 rounded-lg px-4 py-3 text-white placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all backdrop-blur-sm;
+    @apply w-full bg-[#0a0a0a] border border-cardBorder rounded-md px-4 py-3 text-white placeholder-textMuted focus:outline-none focus:ring-1 focus:ring-primary/50 focus:border-primary/50 transition-all text-sm;
   }
 }
