@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { Shield, Settings, Activity, Wallet, MessageSquare } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Shield, Activity, Wallet, MessageSquare, Gamepad2 } from 'lucide-react';
 import { Dashboard } from './components/Dashboard';
 import { AiPolicies } from './components/AiPolicies';
 import { GameSimulator } from './components/GameSimulator';
@@ -7,8 +7,14 @@ import { useStore } from './store';
 
 function App() {
   const [activeTab, setActiveTab] = useState<'dashboard' | 'ai' | 'simulator'>('dashboard');
-  const { walletConnected, walletAddress, connectWallet, showInstallModal, setShowInstallModal } = useStore();
+  const { walletConnected, walletAddress, connectWallet, refreshBalance, showInstallModal, setShowInstallModal } = useStore();
 
+  // Re-fetch real OCT balance on mount (handles reload with persisted wallet)
+  useEffect(() => {
+    if (walletConnected && walletAddress) {
+      refreshBalance();
+    }
+  }, [walletConnected, walletAddress, refreshBalance]);
   return (
     <div className="flex h-screen overflow-hidden">
       {/* Sidebar */}
@@ -39,8 +45,8 @@ function App() {
             onClick={() => setActiveTab('simulator')}
             className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl transition-all ${activeTab === 'simulator' ? 'bg-white/10 text-white shadow-inner border border-white/5' : 'text-textMuted hover:text-white hover:bg-white/5'}`}
           >
-            <Settings className="w-5 h-5" />
-            <span className="font-medium">Game Simulator</span>
+            <Gamepad2 className="w-5 h-5" />
+            <span className="font-medium">OnePlay Simulator</span>
           </button>
         </nav>
       </aside>
@@ -49,7 +55,7 @@ function App() {
       <main className="flex-1 flex flex-col p-4 md:pl-0 z-10 overflow-hidden">
         <header className="glass-panel h-20 mb-4 flex items-center justify-between px-8 shrink-0">
           <h2 className="text-2xl font-semibold tracking-wide text-white/90 flex items-center">
-            {activeTab === 'ai' ? 'Guardian AI Configurator' : activeTab === 'simulator' ? 'OnePlay Game Simulator' : 'Vault Dashboard'}
+            {activeTab === 'ai' ? 'Guardian AI Configurator' : activeTab === 'simulator' ? 'OnePlay Simulator' : 'Vault Dashboard'}
             <span className="ml-4 px-3 py-1 bg-primary/20 border border-primary/40 text-primary text-xs uppercase tracking-widest rounded-md font-bold drop-shadow-[0_0_10px_rgba(59,130,246,0.5)]">
               OneChain Testnet
             </span>
@@ -61,8 +67,7 @@ function App() {
             <Wallet className="w-4 h-4" />
             <span>{walletConnected && walletAddress 
               ? `${walletAddress.slice(0, 6)}...${walletAddress.slice(-4)}` 
-              : 'Connect OneWallet'}
-            </span>
+              : 'Connect OneWallet'}</span>
           </button>
         </header>
 

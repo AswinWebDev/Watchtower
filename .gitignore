@@ -1,5 +1,33 @@
-# Ignore Hackathon Markdown files
+# Dependencies
+node_modules/
+
+# Build output
+build/
+dist/
+*.mv
+
+# Environment
+.env
+.env.local
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Sui/Move build artifacts
+contracts/build/
+contracts/node_modules/
+Move.lock
+
+# Hackathon internal docs
 OneHack_hackathon_details.md
 Terms_and_conditions.md
 Tracks.md
 Idea.md
+
+# Deployment secrets
+deployment-info.json

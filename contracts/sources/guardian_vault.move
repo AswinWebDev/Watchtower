@@ -1,8 +1,6 @@
+#[allow(lint(public_entry))]
 module guardian::vault {
     use std::string::String;
-    use sui::object::{Self, UID};
-    use sui::transfer;
-    use sui::tx_context::{Self, TxContext};
     use sui::balance::{Self, Balance};
     use sui::coin::{Self, Coin};
     use sui::sui::SUI;
@@ -10,17 +8,17 @@ module guardian::vault {
     /// Error codes
     const EInsufficientFunds: u64 = 0;
     const EExceedsDailyLimit: u64 = 1;
-    const EContractBlocked: u64 = 2;
+    const ENotOwner: u64 = 403;
 
     /// A struct representing an AI-generated policy rule
-    struct PolicyRule has store, drop {
-        action: String,   // "BLOCK_CONTRACT", "SET_LIMIT"
-        target: String,   // Contract address or category
-        limit_amount: u64, // Limit in SUI MIST
+    public struct PolicyRule has store, drop, copy {
+        action: String,
+        target: String,
+        limit_amount: u64,
     }
 
     /// The Guardian Vault owned by the user
-    struct SmartVault has key {
+    public struct SmartVault has key {
         id: UID,
         owner: address,
         balance: Balance<SUI>,
@@ -28,69 +26,68 @@ module guardian::vault {
         daily_spent: u64,
     }
 
-    /// Create a new protected vault for the user
+    /// Create a new protected vault for the caller
     public entry fun create_vault(ctx: &mut TxContext) {
         let vault = SmartVault {
             id: object::new(ctx),
-            owner: tx_context::sender(ctx),
+            owner: ctx.sender(),
             balance: balance::zero(),
-            rules: vector::empty(),
+            rules: vector[],
             daily_spent: 0,
         };
-        transfer::transfer(vault, tx_context::sender(ctx));
+        transfer::transfer(vault, ctx.sender());
     }
 
-    /// Deposit SUI into the vault
+    /// Deposit OCT into the vault for protection
     public entry fun deposit(vault: &mut SmartVault, coin: Coin<SUI>, _ctx: &mut TxContext) {
         balance::join(&mut vault.balance, coin::into_balance(coin));
     }
 
-    /// AI backend calls this to add a translated rule to the user's vault
+    /// Add an AI-generated policy rule to the vault (owner only)
     public entry fun add_ai_policy(
-        vault: &mut SmartVault, 
-        action: String, 
-        target: String, 
-        limit: u64, 
+        vault: &mut SmartVault,
+        action: String,
+        target: String,
+        limit: u64,
         ctx: &mut TxContext
     ) {
-        assert!(tx_context::sender(ctx) == vault.owner, 403); // Only owner can add policy
-        
+        assert!(ctx.sender() == vault.owner, ENotOwner);
         let rule = PolicyRule {
-            action: action,
-            target: target,
-            limit_amount: limit
+            action,
+            target,
+            limit_amount: limit,
         };
-        vector::push_back(&mut vault.rules, rule);
+        vault.rules.push_back(rule);
     }
 
-    /// Supervised Transfer - The core mechanic. Checks rules before allowing a spend.
+    /// Supervised Transfer — checks all rules before allowing a spend
     public entry fun safe_transfer(
         vault: &mut SmartVault,
         amount: u64,
         recipient: address,
         ctx: &mut TxContext
     ) {
-        assert!(tx_context::sender(ctx) == vault.owner, 403);
-        assert!(balance::value(&mut vault.balance) >= amount, EInsufficientFunds);
+        assert!(ctx.sender() == vault.owner, ENotOwner);
+        assert!(vault.balance.value() >= amount, EInsufficientFunds);
 
-        // Very basic rule checking loop for the MVP
-        let i = 0;
-        let len = vector::length(&vault.rules);
+        let len = vault.rules.length();
+        let mut i = 0;
         while (i < len) {
-            let rule = vector::borrow(&vault.rules, i);
-            
-            // If there's a daily limit rule, enforce it
-            // Note: In a production Move contract, we'd use 'hash' matching for strings to avoid runtime costs, 
-            // but for this MVP we keep it conceptual to prove the architecture.
+            let rule = &vault.rules[i];
             if (rule.limit_amount > 0) {
                 assert!((vault.daily_spent + amount) <= rule.limit_amount, EExceedsDailyLimit);
             };
             i = i + 1;
         };
 
-        // If rules passed, execute transfer
         vault.daily_spent = vault.daily_spent + amount;
-        let coin_to_send = coin::from_balance(balance::split(&mut vault.balance, amount), ctx);
+        let coin_to_send = coin::from_balance(vault.balance.split(amount), ctx);
         transfer::public_transfer(coin_to_send, recipient);
+    }
+
+    /// Reset daily spending counter
+    public entry fun reset_daily(vault: &mut SmartVault, ctx: &mut TxContext) {
+        assert!(ctx.sender() == vault.owner, ENotOwner);
+        vault.daily_spent = 0;
     }
 }

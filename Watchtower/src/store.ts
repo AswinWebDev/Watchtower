@@ -19,6 +19,19 @@ export interface Transaction {
   reason?: string;
 }
 
+export interface ThreatAnalysis {
+  threatDetected: boolean;
+  severity: 'CRITICAL' | 'HIGH' | 'MEDIUM' | 'LOW';
+  threatDescription: string;
+  recommendedAction: string;
+  suggestedPolicy?: {
+    action: string;
+    target: string;
+    amountDetails: { limit: number; timeframe: string };
+    explanation: string;
+  } | null;
+}
+
 interface WatchtowerStore {
   walletAddress: string | null;
   walletConnected: boolean;
@@ -27,113 +40,166 @@ interface WatchtowerStore {
   totalBalance: number;
   usedDaily: number;
   rules: GuardRule[];
-  forceMockConnection: () => void;
-  setWallet: (address: string) => void;
+  resolvedThreats: string[];
+  cachedAnalysis: ThreatAnalysis | null;
   transactions: Transaction[];
   connectWallet: () => Promise<void>;
   addRule: (rule: Omit<GuardRule, 'id'>) => void;
+  dismissThreat: (threatKey: string) => void;
+  setCachedAnalysis: (analysis: ThreatAnalysis) => void;
   attemptTransaction: (amount: number, game: string) => boolean;
+  refreshBalance: () => Promise<void>;
+  setWallet: (address: string) => void;
+  forceMockConnection: () => void;
 }
 
 export const useStore = create<WatchtowerStore>()(
   persist(
     (set, get) => ({
-      walletAddress: '', // Changed from null to '' as per instruction
+      walletAddress: '',
       walletConnected: false,
       showInstallModal: false,
       setShowInstallModal: (show: boolean) => set({ showInstallModal: show }),
-      totalBalance: 0, // Genuine production zero-state
+      totalBalance: 0,
       usedDaily: 0,
-      forceMockConnection: () => {}, // Deprecated for production
+      forceMockConnection: () => {},
       setWallet: (address: string) => set({ walletConnected: true, walletAddress: address, showInstallModal: false }),
       rules: [],
+      resolvedThreats: [],
+      cachedAnalysis: null,
       transactions: [],
+
+      dismissThreat: (threatKey: string) => set((state) => ({
+        resolvedThreats: [...new Set([...state.resolvedThreats, threatKey])]
+      })),
+
+      setCachedAnalysis: (analysis: ThreatAnalysis) => set({ cachedAnalysis: analysis }),
+
+      // Fetch real OCT balance from OneChain testnet
+      refreshBalance: async () => {
+        const address = get().walletAddress;
+        if (!address) return;
+        try {
+          const { getFullnodeUrl } = await import('@onelabs/sui/client');
+          const res = await fetch(getFullnodeUrl('testnet'), {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              jsonrpc: '2.0', id: 1,
+              method: 'suix_getBalance',
+              params: [address, '0x2::oct::OCT']
+            })
+          });
+          const data = await res.json();
+          if (data.result?.totalBalance) {
+            set({ totalBalance: parseInt(data.result.totalBalance) / 1_000_000_000 });
+          }
+        } catch (e) {
+          console.warn('Failed to fetch OCT balance:', e);
+        }
+      },
+
       connectWallet: async () => {
         try {
-          // Log what's available on window for debugging
-          const oneKeys = Object.keys(window).filter(k =>
-            k.toLowerCase().includes('one') || k.toLowerCase().includes('sui') || k.toLowerCase().includes('wallet')
-          );
-          console.log('Wallet-related window keys:', oneKeys);
-
           let address = '';
 
-          // Strategy 1: Wallet Standard registry (works for Sui-based wallets)
+          // Strategy 1: Wallet Standard — find the SUI-chain OneWallet
           try {
             const { getWallets } = await import('@mysten/wallet-standard');
-            // Give extension 1500ms to register via window events
             await new Promise(r => setTimeout(r, 1500));
             const wallets = getWallets().get();
-            console.log('Registered wallets:', wallets.map((w: any) => w.name));
-            if (wallets.length > 0) {
-              const wallet = wallets[0];
-              const feature = (wallet.features as any)?.['standard:connect'];
+            console.log('Registered wallets:', wallets.map((w: any) => `${w.name}(${(w as any).chains})`));
+            
+            const suiWallet = wallets.find((w: any) => {
+              const features = Object.keys(w.features || {});
+              return features.some(f => f.startsWith('sui:'));
+            });
+
+            if (suiWallet) {
+              console.log('Found SUI-chain OneWallet');
+              const feature = (suiWallet.features as any)?.['standard:connect'];
               if (feature?.connect) {
-                // Do NOT pass { silent: false } — OneWallet crashes trying to destructure chainType from it
                 const result = await feature.connect();
                 address = result?.accounts?.[0]?.address || '';
-                console.log('Wallet standard connect result:', result);
+              }
+              if (!address) {
+                const accounts = (suiWallet as any).accounts || [];
+                if (accounts.length > 0) address = accounts[0].address || '';
               }
             }
           } catch (e) {
             console.warn('Wallet standard strategy failed:', e);
           }
 
-          // Strategy 2: Direct window.onechainWallet — confirmed injected by OneWallet extension
+          // Strategy 2: Direct window.onechainWallet
           if (!address) {
-            const windowAny = window as any;
-            const wallet = windowAny.onechainWallet;
+            const wallet = (window as any).onechainWallet;
             if (wallet) {
               try {
-                // Sui-style flow: requestPermissions → getAccounts
-                console.log('Using window.onechainWallet directly...');
-                if (typeof wallet.requestPermissions === 'function') {
-                  await wallet.requestPermissions();
-                }
+                if (typeof wallet.requestPermissions === 'function') await wallet.requestPermissions();
                 if (typeof wallet.getAccounts === 'function') {
                   const accounts = await wallet.getAccounts();
-                  console.log('onechainWallet.getAccounts() returned:', accounts);
                   address = accounts?.[0]?.address || accounts?.[0] || '';
                 }
-                // Fallback: try connect() if getAccounts didn't work
                 if (!address && typeof wallet.connect === 'function') {
                   const res = await wallet.connect();
-                  console.log('onechainWallet.connect() returned:', res);
                   address = res?.address || res?.accountAddress || res?.accounts?.[0]?.address || '';
                 }
-              } catch (err) {
-                console.warn('window.onechainWallet failed:', err);
-              }
+              } catch (err) { console.warn('window.onechainWallet failed:', err); }
             }
           }
 
           if (!address) {
-            console.warn('No wallet detected. Showing install modal.');
             set({ showInstallModal: true });
             return;
           }
 
-          set({ walletConnected: true, walletAddress: address, showInstallModal: false });
+          // Fetch real OCT balance from OneChain testnet
+          let balance = 0;
+          try {
+            const { getFullnodeUrl } = await import('@onelabs/sui/client');
+            const res = await fetch(getFullnodeUrl('testnet'), {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                jsonrpc: '2.0', id: 1,
+                method: 'suix_getBalance',
+                params: [address, '0x2::oct::OCT']
+              })
+            });
+            const data = await res.json();
+            if (data.result?.totalBalance) {
+              balance = parseInt(data.result.totalBalance) / 1_000_000_000;
+            }
+          } catch (e) {
+            console.warn('Failed to fetch OCT balance:', e);
+          }
+
+          set({ walletConnected: true, walletAddress: address, showInstallModal: false, totalBalance: balance });
         } catch (e) {
           console.error('Wallet connection failed:', e);
           set({ showInstallModal: true });
         }
       },
+
       addRule: (rule: Omit<GuardRule, 'id'>) => set((state) => ({
         rules: [{ ...rule, id: Math.random().toString(36).substr(2, 9) }, ...state.rules]
       })),
+
       attemptTransaction: (amount: number, game: string) => {
         const state = get();
-        // find active GameFi daily rule
-        const gameRule = state.rules.find((r) => r.category === 'GameFi' && r.period === 'daily' && r.active);
+        // Check ALL matching rules (GameFi, DeFi, All)
+        const matchingRule = state.rules.find((r) => 
+          (r.category === 'GameFi' || r.category === 'All') && r.period === 'daily' && r.active
+        );
 
         let isBlocked = false;
         let reason = '';
 
-        if (gameRule) {
-          if (state.usedDaily + amount > gameRule.limit) {
+        if (matchingRule) {
+          if (state.usedDaily + amount > matchingRule.limit) {
             isBlocked = true;
-            reason = `Exceeds daily ${gameRule.category} limit of ${gameRule.limit} USDO.`;
+            reason = `Watchtower blocked: Exceeds ${matchingRule.category} daily limit of ${matchingRule.limit} OCT. Policy: "${matchingRule.description}"`;
           }
         }
 
@@ -146,10 +212,11 @@ export const useStore = create<WatchtowerStore>()(
           reason
         };
 
+        // NOTE: totalBalance stays as real on-chain OCT balance — simulator doesn't modify it
+        // usedDaily tracks simulated spending for policy enforcement
         set((state) => ({
           transactions: [newTx, ...state.transactions],
           usedDaily: isBlocked ? state.usedDaily : state.usedDaily + amount,
-          totalBalance: isBlocked ? state.totalBalance : state.totalBalance - amount
         }));
 
         return !isBlocked;
@@ -160,15 +227,12 @@ export const useStore = create<WatchtowerStore>()(
       partialize: (state) => ({
         walletConnected: state.walletConnected,
         walletAddress: state.walletAddress,
-        rules: state.rules
+        totalBalance: state.totalBalance,
+        usedDaily: state.usedDaily,
+        rules: state.rules,
+        transactions: state.transactions,
+        resolvedThreats: state.resolvedThreats,
       }),
     }
   )
 );
-
-if (typeof window !== 'undefined') {
-  (window as any).forceConnect = (address: string = "0xeb4dc...3780") => {
-    useStore.setState({ walletConnected: true, walletAddress: address, showInstallModal: false, totalBalance: 0 });
-    console.log("🚀 DevMode: Forced Connection to", address);
-  };
-}

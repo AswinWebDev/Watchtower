@@ -2,6 +2,7 @@ import express from 'express';
 import corsMiddleware from 'cors';
 import dotenv from 'dotenv';
 import { aiRouter } from './routes/ai.routes';
+import { generatePolicy, analyzeBehavior } from './controllers/ai.controller';
 
 dotenv.config();
 
@@ -12,8 +13,12 @@ const PORT = process.env.PORT || 3001;
 app.use(corsMiddleware({ origin: '*' }));
 app.use(express.json());
 
-// Routes
+// Versioned API Routes
 app.use('/api/v1/ai', aiRouter);
+
+// Direct aliases for frontend compatibility
+app.post('/api/analyze-behavior', analyzeBehavior);
+app.post('/api/parse-rule', generatePolicy);
 
 // Health Check
 app.get('/health', (req, res) => {
